@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>P320: Litigation Simulator</title>
+    <style>
+        body { background: #1a1a1a; color: #00ff00; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        #game-container { position: relative; border: 4px solid #555; background: #222; cursor: none; }
+        canvas { display: block; background: #3d4d2d; }
+        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #444; }
+        .msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-size: 22px; text-shadow: 2px 2px #000; width: 85%; pointer-events: none; font-weight: bold; line-height: 1.5; }
+        #stats { margin-top: 15px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; font-weight: bold; background: #111; padding: 10px; border-radius: 5px; min-width: 700px; text-align: center; }
+        .danger { color: #ff0000; font-size: 28px; display: block; margin-bottom: 10px; }
+        .success-text { color: #ffff00; font-size: 30px; }
+        .discovery { color: #ffaa00; font-size: 14px; margin-top: 5px; display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <div id="ui">
+            <div>LAWSUITS PENDING: <span id="nd-val" style="color:red">0</span></div>
+            <div>STATUS: <span id="status-val">HOLSTERED</span></div>
+        </div>
+        <div id="msg-box" class="msg">PRESS [Q] TO START DRILL<br>(AND TO DRAW ON BEEP)</div>
+    </div>
+
+    <div id="stats">
+        <div>TIME: <span id="time-val">0.00</span>s</div>
+        <div>INTENTIONAL: <span id="int-shots-val">0</span></div>
+        <div>NEUTRALIZED: <span id="targets-val">0</span>/5</div>
+        <div>LAWSUITS: <span id="nd-stat-val">0</span></div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const msgBox = document.getElementById('msg-box');
+    
+    let state = 'WAITING'; 
+    let targets = [];
+    let lawsuitCount = 0;
+    let intentionalShots = 0;
+    let startTime = 0;
+    let finalTime = 0;
+    let isDrawn = false;
+    let mousePos = { x: 400, y: 250 };
+    let lastMousePos = { x: 400, y: 250 };
+    let flashOpacity = 0;
+    let gunX = 600; 
+    let recoil = 0;
+
+    const DRAW_ND_CHANCE = 0.30;
+    const REHOLSTER_ND_CHANCE = 0.25;
+    const SENSITIVITY = 0.0008;
+    const VEL_THRESHOLD = 25;
+
+    const drawNDMessages = [
+        "You shot yourself in the leg.",
+        "Your holster just became a lead dispenser.",
+        "That's a permanent limp and a temporary DQ.",
+        "The gun won the race out of the holster.",
+        "Medical timeout! Surprise appendectomy.",
+        "You didn't even clear the kydex."
+    ];
+
+    const holsterNDMessages = [
+        "I hope the RO didn't like that table.",
+        "The Range Officer is calling his lawyer.",
+        "That bench had a family.",
+        "You just 'upgraded' the concrete floor.",
+        "The RO is coming your way... He doesn't look happy.",
+        "Tactical ventilation hole in your range bag."
+    ];
+
+    function initTargets() {
+        targets = [];
+        for(let i=0; i<5; i++) {
+            targets.push({ x: 100 + (i * 150), y: 150 + (Math.random() * 200), r: 25, hit: false, hitByND: false });
+        }
+    }
+
+    function drawGunFPS() {
+        if (!isDrawn || state === 'DQ') return;
+        gunX += (mousePos.x - gunX) * 0.15;
+        const gunBaseY = canvas.height + 20 + (recoil * 0.5);
+        const targetAngle = (mousePos.x - gunX) * 0.002;
+        ctx.save();
+        ctx.translate(gunX + 60, gunBaseY);
+        ctx.rotate(targetAngle);
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.moveTo(-45, 0); ctx.lineTo(45, 0); ctx.lineTo(15, -180 + recoil); ctx.lineTo(-15, -180 + recoil);
+        ctx.fill();
+        ctx.fillStyle = '#333';
+        ctx.beginPath();
+        ctx.moveTo(-38, -5); ctx.lineTo(38, -5); ctx.lineTo(10, -175 + recoil); ctx.lineTo(-10, -175 + recoil);
+        ctx.fill();
+        ctx.fillStyle = '#080808';
+        ctx.fillRect(-15, -155 + recoil, 30, 35); 
+        ctx.beginPath();
+        ctx.arc(0, -138 + recoil, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff0000';
+        ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+        if (recoil > 0) recoil *= 0.82;
+    }
+
+    function draw() {
+        ctx.fillStyle = '#3d4d2d'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#222'; ctx.fillRect(0, 0, canvas.width, 80);
+        targets.forEach(t => {
+            if(!t.hit) {
+                ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+                ctx.fillStyle = '#ddd'; ctx.fill();
+                ctx.strokeStyle = '#000'; ctx.stroke();
+                ctx.beginPath(); ctx.arc(t.x, t.y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = '#f00'; ctx.fill();
+            }
+        });
+        drawGunFPS();
+        if (isDrawn && state !== 'DQ') {
+            ctx.strokeStyle = 'rgba(0, 255, 0, 0.7)'; ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(mousePos.x, mousePos.y - 12); ctx.lineTo(mousePos.x, mousePos.y + 12);
+            ctx.moveTo(mousePos.x - 12, mousePos.y); ctx.lineTo(mousePos.x + 12, mousePos.y);
+            ctx.stroke();
+            ctx.fillStyle = '#0f0'; ctx.fillRect(mousePos.x-1, mousePos.y-1, 2, 2);
+        }
+        if (state === 'READY' || state === 'ACTIVE') {
+            let now = (performance.now() - startTime) / 1000;
+            document.getElementById('time-val').innerText = now.toFixed(2);
+        }
+        if (flashOpacity > 0) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            flashOpacity -= 0.1;
+        }
+    }
+
+    function fire(isND = false) {
+        if (state === 'DQ' || state === 'COMPLETED') return;
+        flashOpacity = isND ? 0.95 : 0.4;
+        recoil = isND ? 70 : 45; 
+        if (isND) {
+            lawsuitCount++;
+            document.getElementById('nd-val').innerText = lawsuitCount;
+            document.getElementById('nd-stat-val').innerText = lawsuitCount;
+        } else {
+            intentionalShots++;
+            document.getElementById('int-shots-val').innerText = intentionalShots;
+        }
+        targets.forEach(t => {
+            if (!t.hit) {
+                let dist = Math.hypot(t.x - mousePos.x, t.y - mousePos.y);
+                if (dist < t.r) {
+                    t.hit = true;
+                    if (isND) t.hitByND = true;
+                }
+            }
+        });
+        let neutralized = targets.filter(t => t.hit).length;
+        document.getElementById('targets-val').innerText = neutralized;
+        if (neutralized === 5 && state === 'ACTIVE') {
+            state = 'FINISHED';
+            finalTime = (performance.now() - startTime) / 1000;
+            msgBox.innerHTML = "TARGETS NEUTRALIZED<br>PRESS [Q] TO REHOLSTER";
+            document.getElementById('status-val').innerText = "REHOLSTERING";
+        }
+    }
+
+    window.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mousePos.x = e.clientX - rect.left;
+        mousePos.y = e.clientY - rect.top;
+        let vel = Math.hypot(mousePos.x - lastMousePos.x, mousePos.y - lastMousePos.y);
+        if (isDrawn && state === 'ACTIVE' && vel > VEL_THRESHOLD) {
+            if (Math.random() < (vel * SENSITIVITY)) fire(true);
+        }
+        lastMousePos = { ...mousePos };
+    });
+
+    window.addEventListener('mousedown', () => { if (isDrawn && state === 'ACTIVE') fire(false); });
+    window.addEventListener('keydown', (e) => {
+        let key = e.key.toLowerCase();
+        if (key === 'q') {
+            if (state === 'WAITING') startDrill();
+            else if (state === 'READY') handleDraw();
+            else if (state === 'FINISHED') handleReholster();
+        }
+        if (key === 'r' && (state === 'DQ' || state === 'COMPLETED')) {
+            location.reload();
+        }
+        if (key === 'p' && isDrawn && state === 'ACTIVE') {
+            fire(true);
+        }
+    });
+
+    function startDrill() {
+        state = 'COUNTDOWN';
+        msgBox.innerText = "STAND BY...";
+        setTimeout(() => {
+            msgBox.innerText = "BEEP!";
+            state = 'READY';
+            startTime = performance.now();
+            document.getElementById('status-val').innerText = "READY TO DRAW";
+        }, 1200);
+    }
+
+    function handleDraw() {
+        if (Math.random() < DRAW_ND_CHANCE) {
+            fire(true);
+            state = 'DQ';
+            let randomMsg = drawNDMessages[Math.floor(Math.random() * drawNDMessages.length)];
+            msgBox.innerHTML = `<span class="danger">NEGLIGENT DISCHARGE</span>${randomMsg}<br>[R] TO RESTART`;
+        } else {
+            isDrawn = true; state = 'ACTIVE'; msgBox.innerText = "";
+            document.getElementById('status-val').innerText = "ENGAGING";
+        }
+    }
+
+    function handleReholster() {
+        if (Math.random() < REHOLSTER_ND_CHANCE) {
+            fire(true);
+            state = 'DQ';
+            let randomMsg = holsterNDMessages[Math.floor(Math.random() * holsterNDMessages.length)];
+            msgBox.innerHTML = `<span class="danger">NEGLIGENT DISCHARGE</span>${randomMsg}<br>[R] TO RESTART`;
+        } else {
+            isDrawn = false; state = 'COMPLETED';
+            document.getElementById('status-val').innerText = "SECURE";
+            const score = Math.round(finalTime * 100) + (intentionalShots * 100) + (lawsuitCount * 250);
+            let discoveryMsg = "";
+            let ndHits = targets.filter(t => t.hitByND).length;
+
+            const fullNDMessages = [
+                "LEGAL DISCOVERY: You didn't pull the trigger once, yet you set a stage record. The union is confused.",
+                "LEGAL DISCOVERY: You achieved a 100% hit rate through 'Unsolicited Kinetic Feedback.' The manufacturer is calling it an efficiency upgrade.",
+                "LEGAL DISCOVERY: Investigation concludes the gun cleared the stage to save you time. Expect a 'Premium Feature' invoice in the mail.",
+                "LEGAL DISCOVERY: The firearm has been promoted to 'Primary Shooter.' You have been demoted to 'Gun Stand.'",
+                "LEGAL DISCOVERY: Range footage shows the gun was leading the targets. It is currently being scouted by a competitive shooting team.",
+                "LEGAL DISCOVERY: You’ve been disqualified for 'Aiding and Abetting a Sentient Object.' The gun is currently out on bail."
+            ];
+            
+            if (lawsuitCount === 0) {
+                discoveryMsg = "<span class='discovery'>CLEAN RUN: The gun functioned as intended. No uncommanded fire detected.... Congrats?</span>";
+            } else if (ndHits === 1) {
+                discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: 'Uncommanded assist' detected on targets. Run under investigation.</span>";
+            } else if (ndHits === 2) {
+                discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: Pattern of 'efficiency' detected. Manufacturer denies everything.</span>";
+            } else if (ndHits === 3) {
+                discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: Class action intensified. 'It just went off' is not a valid defense.</span>";
+            } else if (ndHits === 4) {
+                discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: You are now the lead plaintiff. Sentient firearms protocol engaged.</span>";
+            } else if (ndHits >= 5) {
+                let randomSentientMsg = fullNDMessages[Math.floor(Math.random() * fullNDMessages.length)];
+                discoveryMsg = `<span class='discovery'>${randomSentientMsg}</span>`;
+            }
+
+            msgBox.innerHTML = `<span class="success-text">DRILL SUCCESS</span><br>
+                                FINAL SCORE: ${score}<br>
+                                <small>(Time: ${Math.round(finalTime * 100)} | Shots: ${intentionalShots * 100} | Lawsuits: ${lawsuitCount * 250})</small><br>
+                                ${discoveryMsg}<br>
+                                [R] TO RETRY`;
+        }
+    }
+
+    function gameLoop() { draw(); requestAnimationFrame(gameLoop); }
+    initTargets();
+    gameLoop();
+</script>
+</body>
+</html>
