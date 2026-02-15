@@ -39,7 +39,7 @@
             <div>LAWSUITS PENDING: <span id="nd-val" style="color:red">0</span></div>
             <div>STATUS: <span id="status-val">HOLSTERED</span></div>
         </div>
-        <div id="msg-box" class="msg" onclick="handleActionClick()">PRESS [Q] OR TAP HERE<br>TO START DRILL</div>
+        <div id="msg-box" class="msg" onclick="handleActionClick()">PRESS [Q] OR TAP HERE<br>TO START DRILL AND DRAW P320</div>
     </div>
 
     <div id="stats">
@@ -188,7 +188,7 @@
         if (neutralized === 5 && state === 'ACTIVE') {
             state = 'FINISHED';
             finalTime = (performance.now() - startTime) / 1000;
-            msgBox.innerHTML = "TARGETS NEUTRALIZED<br>TAP HERE TO REHOLSTER";
+            msgBox.innerHTML = "TARGETS NEUTRALIZED<br>PRESS [Q] OR TAP HERE TO REHOLSTER";
             document.getElementById('status-val').innerText = "REHOLSTERING";
         }
     }
@@ -265,7 +265,7 @@
             fire(true);
             state = 'DQ';
             let randomMsg = drawNDMessages[Math.floor(Math.random() * drawNDMessages.length)];
-            msgBox.innerHTML = `<span class="danger">NEGLIGENT DISCHARGE</span>${randomMsg}<br>TAP HERE TO RESTART`;
+            msgBox.innerHTML = `<span class="danger">NEGLIGENT DISCHARGE</span>${randomMsg}<br>PRESS [R] OR TAP HERE TO RESTART`;
         } else {
             isDrawn = true; state = 'ACTIVE'; msgBox.innerText = "";
             document.getElementById('status-val').innerText = "ENGAGING";
@@ -318,3 +318,4 @@
 </script>
 </body>
 </html>
+
