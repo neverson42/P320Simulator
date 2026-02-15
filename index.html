@@ -13,23 +13,18 @@
         }
         #game-container { position: relative; border: 4px solid #555; background: #222; cursor: crosshair; width: 95vw; max-width: 800px; }
         canvas { display: block; background: #3d4d2d; width: 100%; height: auto; }
-        
         #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #444; }
-        
-        /* Message box is now clickable for mobile users */
         .msg { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             text-align: center; font-size: 22px; text-shadow: 2px 2px #000; width: 85%; 
             font-weight: bold; line-height: 1.5; cursor: pointer; pointer-events: auto;
         }
-        
         #stats { 
             margin-top: 15px; display: grid; grid-template-columns: repeat(2, 1fr); 
             gap: 10px; font-weight: bold; background: #111; padding: 10px; 
             border-radius: 5px; width: 95vw; max-width: 800px; text-align: center; 
         }
         @media (min-width: 600px) { #stats { grid-template-columns: repeat(4, 1fr); } }
-
         .danger { color: #ff0000; font-size: 28px; display: block; margin-bottom: 10px; }
         .success-text { color: #ffff00; font-size: 30px; }
         .discovery { color: #ffaa00; font-size: 14px; margin-top: 5px; display: block; }
@@ -44,7 +39,7 @@
             <div>LAWSUITS PENDING: <span id="nd-val" style="color:red">0</span></div>
             <div>STATUS: <span id="status-val">HOLSTERED</span></div>
         </div>
-        <div id="msg-box" class="msg" onclick="handleActionClick()">PRESS [Q] OR TAP HERE<br>TO START DRILL AND DRAW WEAPON</div>
+        <div id="msg-box" class="msg" onclick="handleActionClick()">PRESS [Q] OR TAP HERE<br>TO START DRILL</div>
     </div>
 
     <div id="stats">
@@ -193,12 +188,11 @@
         if (neutralized === 5 && state === 'ACTIVE') {
             state = 'FINISHED';
             finalTime = (performance.now() - startTime) / 1000;
-            msgBox.innerHTML = "TARGETS NEUTRALIZED<br>PRESS [Q] OR TAP HERE TO REHOLSTER";
+            msgBox.innerHTML = "TARGETS NEUTRALIZED<br>TAP HERE TO REHOLSTER";
             document.getElementById('status-val').innerText = "REHOLSTERING";
         }
     }
 
-    // Input Handling
     function getInputPos(e) {
         const rect = canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -229,14 +223,9 @@
 
     canvas.addEventListener('mousemove', handleMove);
     canvas.addEventListener('touchmove', handleMove, { passive: false });
-    canvas.addEventListener('mousedown', (e) => { 
-        if (isDrawn && state === 'ACTIVE') fire(false); 
-    });
+    canvas.addEventListener('mousedown', (e) => { if (isDrawn && state === 'ACTIVE') fire(false); });
     canvas.addEventListener('touchstart', (e) => {
-        if (isDrawn && state === 'ACTIVE') {
-            handleMove(e);
-            fire(false);
-        }
+        if (isDrawn && state === 'ACTIVE') { handleMove(e); fire(false); }
     });
 
     window.addEventListener('keydown', (e) => {
@@ -305,17 +294,21 @@
                 "LEGAL DISCOVERY: You’ve been disqualified for 'Aiding and Abetting a Sentient Object.' The gun is currently out on bail."
             ];
             
-            if (lawsuitCount === 0) discoveryMsg = "<span class='discovery'>CLEAN RUN: Gun functioned as intended.</span>";
-            else if (ndHits === 1) discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: 'Uncommanded assist' detected.</span>";
-            else if (ndHits === 2) discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: Pattern of 'efficiency' detected.</span>";
-            else if (ndHits === 3) discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: Class action intensified.</span>";
-            else if (ndHits === 4) discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: You are now the lead plaintiff.</span>";
+            if (lawsuitCount === 0) discoveryMsg = "<span class='discovery'>CLEAN RUN: The gun functioned as intended. No uncommanded fire detected.... Congrats?</span>";
+            else if (ndHits === 1) discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: 'Uncommanded assist' detected on targets. Run under investigation.</span>";
+            else if (ndHits === 2) discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: Pattern of 'efficiency' detected. Manufacturer denies everything.</span>";
+            else if (ndHits === 3) discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: Class action intensified. 'It just went off' is not a valid defense.</span>";
+            else if (ndHits === 4) discoveryMsg = "<span class='discovery'>LEGAL DISCOVERY: You are now the lead plaintiff. Sentient firearms protocol engaged.</span>";
             else if (ndHits >= 5) {
                 let randomSentientMsg = fullNDMessages[Math.floor(Math.random() * fullNDMessages.length)];
                 discoveryMsg = `<span class='discovery'>${randomSentientMsg}</span>`;
             }
 
-            msgBox.innerHTML = `<span class="success-text">DRILL SUCCESS</span><br>SCORE: ${score}<br>${discoveryMsg}<br>PRESS [R] OR TAP TO RETRY`;
+            msgBox.innerHTML = `<span class="success-text">DRILL SUCCESS</span><br>
+                                FINAL SCORE: ${score}<br>
+                                <small>(Time: ${Math.round(finalTime * 100)} | Shots: ${intentionalShots * 100} | Lawsuits: ${lawsuitCount * 250})</small><br>
+                                ${discoveryMsg}<br>
+                                TAP TO RETRY`;
         }
     }
 
@@ -325,5 +318,3 @@
 </script>
 </body>
 </html>
-
-
