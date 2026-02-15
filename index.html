@@ -193,7 +193,7 @@
         if (neutralized === 5 && state === 'ACTIVE') {
             state = 'FINISHED';
             finalTime = (performance.now() - startTime) / 1000;
-            msgBox.innerHTML = "TARGETS NEUTRALIZED<br>TAP HERE TO REHOLSTER";
+            msgBox.innerHTML = "TARGETS NEUTRALIZED<br>PRESS [Q] OR TAP HERE TO REHOLSTER";
             document.getElementById('status-val').innerText = "REHOLSTERING";
         }
     }
@@ -315,7 +315,7 @@
                 discoveryMsg = `<span class='discovery'>${randomSentientMsg}</span>`;
             }
 
-            msgBox.innerHTML = `<span class="success-text">DRILL SUCCESS</span><br>SCORE: ${score}<br>${discoveryMsg}<br>TAP TO RETRY`;
+            msgBox.innerHTML = `<span class="success-text">DRILL SUCCESS</span><br>SCORE: ${score}<br>${discoveryMsg}<br>PRESS [R] OR TAP TO RETRY`;
         }
     }
 
@@ -325,4 +325,5 @@
 </script>
 </body>
 </html>
+
 
