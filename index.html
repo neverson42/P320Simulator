@@ -39,7 +39,7 @@
             <div>LAWSUITS PENDING: <span id="nd-val" style="color:red">0</span></div>
             <div>STATUS: <span id="status-val">HOLSTERED</span></div>
         </div>
-        <div id="msg-box" class="msg" onclick="handleActionClick()">PRESS [Q] OR TAP HERE<br>TO START DRILL AND DRAW P320</div>
+        <div id="msg-box" class="msg" onclick="handleActionClick()">PRESS [Q] OR TAP HERE TO START DRILL<br>AND DRAW P320 AFTER BEEP</div>
     </div>
 
     <div id="stats">
@@ -245,7 +245,7 @@
         document.getElementById('targets-val').innerText = "0";
         document.getElementById('time-val').innerText = "0.00";
         document.getElementById('status-val').innerText = "HOLSTERED";
-        msgBox.innerHTML = "PRESS [Q] OR TAP HERE<br>TO START DRILL AND DRAW P320";
+        msgBox.innerHTML = "PRESS [Q] OR TAP HERE TO START DRILL<br>AND DRAW P320 AFTER BEEP";
         initTargets();
     }
 
@@ -318,6 +318,7 @@
 </script>
 </body>
 </html>
+
 
 
 
