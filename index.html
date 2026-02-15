@@ -33,11 +33,11 @@
         <div>LAWSUITS: <span id="nd-stat-val">0</span></div>
     </div>
 
-
     <div style="margin-top: 20px; font-size: 12px; color: #555; text-align: center;">
+        CASE FILES ACCESSED: 
         <img src="https://hits.dwyl.com/neverson42/P320Simulator.svg" alt="Visitor Counter" style="vertical-align: middle;"/>
     </div>
-    
+
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -191,14 +191,32 @@
     window.addEventListener('mousedown', () => { if (isDrawn && state === 'ACTIVE') fire(false); });
     window.addEventListener('keydown', (e) => {
         let key = e.key.toLowerCase();
+        
         if (key === 'q') {
             if (state === 'WAITING') startDrill();
             else if (state === 'READY') handleDraw();
             else if (state === 'FINISHED') handleReholster();
         }
+        
+        // Internal Reset (Prevents Counter Increment)
         if (key === 'r' && (state === 'DQ' || state === 'COMPLETED')) {
-            location.reload();
+            state = 'WAITING';
+            lawsuitCount = 0;
+            intentionalShots = 0;
+            startTime = 0;
+            finalTime = 0;
+            isDrawn = false;
+            recoil = 0;
+            document.getElementById('nd-val').innerText = "0";
+            document.getElementById('nd-stat-val').innerText = "0";
+            document.getElementById('int-shots-val').innerText = "0";
+            document.getElementById('targets-val').innerText = "0";
+            document.getElementById('time-val').innerText = "0.00";
+            document.getElementById('status-val').innerText = "HOLSTERED";
+            msgBox.innerHTML = "PRESS [Q] TO START DRILL<br>(AND TO DRAW ON BEEP)";
+            initTargets();
         }
+        
         if (key === 'p' && isDrawn && state === 'ACTIVE') {
             fire(true);
         }
@@ -278,6 +296,3 @@
 </script>
 </body>
 </html>
-
-
-
